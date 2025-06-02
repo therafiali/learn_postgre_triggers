@@ -114,3 +114,69 @@ Order of Execution: If multiple triggers are defined for the same event on the s
 
 Triggers in Supabase
 Supabase leverages PostgreSQL, so all standard PostgreSQL trigger functionalities are available. You can create and manage triggers directly within the Supabase SQL Editor, providing a robust way to implement server-side logic and data management rules for your applications.
+
+
+
+## Code Example:
+
+### Trigger Function Code
+```
+CREATE OR REPLACE FUNCTION public.log_password_reset_transaction()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO public.transactions (
+        request_id,
+        request_type,
+        messenger_id,
+        page_id,
+        current_status,
+        game_platform,
+        game_username,
+        new_password,
+        team_code,
+        manychat_data,
+        action_by,
+        vip_code,
+        init_by,
+        remarks,
+        player_name,
+        player_profile_pic,
+        created_at,
+        updated_at
+    ) VALUES (
+        NEW.id,
+        'reset'::public.request_type, -- Explicitly cast to ENUM
+        NEW.messenger_id,
+        NEW.page_name,
+        public.map_status_to_transaction_status(NEW.status::text),
+        NEW.game_platform::public.game_platform, -- Explicitly cast to ENUM
+        NEW.suggested_username,
+        NEW.new_password,
+        NEW.team_code,
+        public.format_manychat_data(NEW.manychat_data::text),
+        NULL, -- action_by is NULL in your logic
+        NEW.vip_code,
+        NEW.init_by,
+        NEW.additional_message,
+        NEW.player_name,
+        NEW.player_profile_pic,
+        NOW(),
+        NOW()
+    );
+    RETURN NEW;
+END;
+$$;
+
+```
+
+### Trigger code for run trigger function:
+
+```
+CREATE TRIGGER password_reset_request_logger
+AFTER INSERT ON public.password_reset_requests
+FOR EACH ROW
+EXECUTE FUNCTION public.log_password_reset_transaction();
+```
+
